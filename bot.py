@@ -302,6 +302,14 @@ async def agendar_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+# Render (plan gratis) asigna un puerto y una URL publica automaticamente.
+# Si esas variables existen, el bot arranca en modo "webhook" (necesario para
+# el plan Free de Web Service). Si no existen (por ej. corriendo en tu PC),
+# arranca en modo "polling" para probarlo local.
+PORT = int(os.environ.get("PORT", "10000"))
+RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL")
+
+
 def main():
     db.init_db()
     app = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -323,8 +331,17 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO, recibir_foto))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder_pregunta))
 
-    logger.info("Bot arrancando...")
-    app.run_polling()
+    if RENDER_EXTERNAL_URL:
+        logger.info("Bot arrancando en modo webhook (Render)...")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TELEGRAM_TOKEN,
+            webhook_url=f"{RENDER_EXTERNAL_URL}/{TELEGRAM_TOKEN}",
+        )
+    else:
+        logger.info("Bot arrancando en modo polling (local)...")
+        app.run_polling()
 
 
 if __name__ == "__main__":
